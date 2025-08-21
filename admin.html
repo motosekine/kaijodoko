@@ -62,19 +62,11 @@
             </p>
         </header>
 
-        <!-- パスワード認証フォーム -->
-        <div id="passwordForm">
-            <h2 class="text-xl font-bold text-gray-800 text-center mb-4">パスワードを入力してください</h2>
-            <div class="flex flex-col gap-4">
-                <input type="password" id="adminPassword" placeholder="パスワード" class="w-full px-4 py-2 rounded-md border-2 border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm">
-                <button id="authBtn" class="w-full bg-indigo-500 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:bg-indigo-600 transition-colors">
-                    認証
-                </button>
-            </div>
-        </div>
-
         <!-- 登録フォーム -->
-        <div id="registrationForm" class="hidden bg-gray-50 rounded-xl p-6 space-y-4 shadow-inner">
+        <div id="registrationForm" class="bg-gray-50 rounded-xl p-6 space-y-4 shadow-inner">
+            <p class="text-red-500 text-sm font-semibold text-center">
+                ※ このページは公開されています。登録権限はSupabaseのRLSで設定してください。
+            </p>
             <div>
                 <label for="formalName" class="block text-sm font-medium text-gray-700">正式名称 <span class="text-red-500">*</span></label>
                 <input type="text" id="formalName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
@@ -109,32 +101,14 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Vercelの環境変数からSupabaseの情報を取得
             const SUPABASE_URL = process.env.SUPABASE_URL;
             const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
             const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            // Vercelの環境変数からパスワードを取得
-            const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-            const passwordForm = document.getElementById('passwordForm');
-            const adminPasswordInput = document.getElementById('adminPassword');
-            const authBtn = document.getElementById('authBtn');
             const registrationForm = document.getElementById('registrationForm');
             const submitBtn = document.getElementById('submitBtn');
             const loadingOverlay = document.getElementById('loadingOverlay');
             
-            // パスワード認証
-            authBtn.addEventListener('click', () => {
-                if (adminPasswordInput.value === ADMIN_PASSWORD) {
-                    passwordForm.classList.add('hidden');
-                    registrationForm.classList.remove('hidden');
-                    alert('認証に成功しました。会場を登録できます。');
-                } else {
-                    alert('パスワードが間違っています。');
-                }
-            });
-
             // 登録ボタンのクリックイベント
             submitBtn.addEventListener('click', async () => {
                 const formalName = document.getElementById('formalName').value;
