@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サッカー会場情報システム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide-icons@latest"></script>
+    <!-- Supabaseクライアントライブラリを読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .search-icon {
+            transform: scaleX(-1);
+        }
+        .map-frame {
+            border: 0;
+            border-radius: 0.75rem;
+            width: 100%;
+            height: 300px;
+        }
+        .modal-content {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .form-section {
+            display: none;
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+            max-height: 0;
+        }
+        .form-section.open {
+            display: block;
+            max-height: 500px; /* 十分な高さを設定 */
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pagination-btn {
+            @apply px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-full hover:bg-gray-300;
+        }
+        .pagination-btn.disabled {
+            @apply opacity-50 cursor-not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex justify-center p-4 min-h-screen">
+
+    <div class="container bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-8">
+        <!-- ヘッダー -->
+        <header class="text-center space-y-2">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800">
+                会場どこかな？
+            </h1>
+            <p class="text-gray-600 md:text-lg">
+                練習や試合の場所をかんたんに探せるよ！
+            </p>
+        </header>
+
+        <!-- サイト利用の注記を追加 -->
+        <div class="bg-blue-100 border border-blue-200 text-blue-800 rounded-lg p-4 text-sm">
+            <p>このサイトは、練習、試合会場の場所（位置）を示すことを目的としています。会場や駐車場の利用方法等は、会場管理者やコーチからの指示に従ってください。</p>
+        </div>
+
+        <!-- 検索フォーム -->
+        <div class="relative w-full">
+            <input type="text" id="searchInput" placeholder="会場名（略称でもOK）や住所で検索"
+                   class="w-full pl-12 pr-4 py-3 rounded-full border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+        </div>
+
+        <!-- 会場一覧 -->
+        <main id="venueList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- JavaScriptでカードが動的に挿入されます -->
+        </main>
+
+        <!-- ページネーションコントロール -->
+        <div id="pagination" class="flex justify-center items-center space-x-4">
+            <button id="prevBtn" class="pagination-btn disabled">前へ</button>
+            <span id="pageInfo" class="text-gray-700 font-medium">1 / 1</span>
+            <button id="nextBtn" class="pagination-btn disabled">次へ</button>
+        </div>
+        
+        <!-- モーダル（詳細情報表示用） -->
+        <div id="venueModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="modal-content bg-white rounded-xl shadow-2xl p-6 md:p-8 max-w-lg w-full relative">
+                <button id="closeModal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+                <div id="modalContent" class="space-y-4">
+                    <!-- 詳細情報がここに表示されます -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- ローディング画面 -->
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const SUPABASE_URL = 'https://dhqvremfiglqsqztkjsd.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRocXZyZW1maWdscXNxenRranNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2OTc3MzIsImV4cCI6MjA3MTI3MzczMn0.BK4e1bVs5YgoAoxpAMv-Dno-OYzeO4AHSsrAU-xUzx4';
+            const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            const venueList = document.getElementById('venueList');
+            const searchInput = document.getElementById('searchInput');
+            const venueModal = document.getElementById('venueModal');
+            const modalContent = document.getElementById('modalContent');
+            const closeModalBtn = document.getElementById('closeModal');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const pageInfo = document.getElementById('pageInfo');
+
+            const itemsPerPage = 10;
+            let venues = [];
+            let currentPage = 1;
+            let filteredVenues = [];
+
+            // ページネーションのUIを更新する関数
+            const updatePagination = () => {
+                const totalPages = Math.ceil(filteredVenues.length / itemsPerPage);
+                pageInfo.textContent = `${currentPage} / ${totalPages}`;
+
+                if (currentPage === 1) {
+                    prevBtn.classList.add('disabled');
+                } else {
+                    prevBtn.classList.remove('disabled');
+                }
+
+                if (currentPage === totalPages || totalPages === 0) {
+                    nextBtn.classList.add('disabled');
+                } else {
+                    nextBtn.classList.remove('disabled');
+                }
+            };
+
+            // 会場カードを生成して表示する関数 (ページネーション対応)
+            const renderVenues = () => {
+                venueList.innerHTML = '';
+                const start = (currentPage - 1) * itemsPerPage;
+                const end = start + itemsPerPage;
+                const venuesToShow = filteredVenues.slice(start, end);
+
+                if (venuesToShow.length === 0) {
+                    venueList.innerHTML = '<p class="col-span-1 md:col-span-2 text-center text-gray-500">見つからなかったよ...他のキーワードで試してみてね！</p>';
+                    return;
+                }
+
+                venuesToShow.forEach(venue => {
+                    const card = document.createElement('div');
+                    card.className = 'card bg-white p-6 rounded-xl shadow-md cursor-pointer border-2 border-transparent hover:border-blue-500';
+                    card.innerHTML = `
+                        <h3 class="text-xl font-bold text-gray-800">${venue.name}</h3>
+                        <p class="text-gray-500 text-sm mt-1">（${venue.nickname || 'なし'}）</p>
+                        <p class="text-gray-600 text-sm mt-2 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin text-blue-500"><path d="M12 17.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z"/><path d="M12 2C8.1 2 5 5.1 5 9c0 5 7 13 7 13s7-8 7-13c0-3.9-3.1-7-7-7Z"/></svg>${venue.address}</p>
+                    `;
+                    card.addEventListener('click', () => showVenueModal(venue));
+                    venueList.appendChild(card);
+                });
+                updatePagination();
+            };
+
+            // Supabaseから会場データを取得
+            async function fetchVenues() {
+                loadingOverlay.classList.remove('hidden');
+                const { data, error } = await supabase
+                    .from('venues')
+                    .select('*');
+                
+                if (error) {
+                    console.error("会場データの取得に失敗しました:", error);
+                    venueList.innerHTML = '<p class="col-span-1 md:col-span-2 text-center text-red-500">データの読み込みに失敗しました。後でもう一度お試しください。</p>';
+                    loadingOverlay.classList.add('hidden');
+                    return;
+                }
+
+                venues = data.map(v => ({
+                    id: v.id,
+                    name: v.formal_name,
+                    nickname: v.nickname,
+                    address: v.address,
+                    mapUrl: v.map_url,
+                    mapEmbedUrl: v.map_embed_url
+                }));
+                filteredVenues = venues;
+                renderVenues();
+                loadingOverlay.classList.add('hidden');
+            }
+
+            // 詳細モーダルを表示する関数
+            const showVenueModal = (venue) => {
+                const lineShareText = `【会場情報】\n会場名: ${venue.name} (${venue.nickname || 'なし'})\n住所: ${venue.address}\n地図: ${venue.mapUrl}`;
+                const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineShareText)}`;
+                
+                const mapEmbedUrl = venue.mapEmbedUrl || `https://www.google.com/maps/embed/v1/place?key=YOUR_GOOGLE_MAPS_API_KEY&q=${encodeURIComponent(venue.address)}`;
+
+                modalContent.innerHTML = `
+                    <h3 class="text-2xl font-bold text-gray-800">${venue.name}</h3>
+                    <p class="text-gray-500 text-base mt-1">（${venue.nickname || 'なし'}）</p>
+                    <div class="mt-4 space-y-2">
+                        <div class="flex items-center gap-2 text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin text-blue-500"><path d="M12 17.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z"/><path d="M12 2C8.1 2 5 5.1 5 9c0 5 7 13 7 13s7-8 7-13c0-3.9-3.1-7-7-7Z"/></svg>
+                            <span class="font-medium">${venue.address}</span>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <iframe src="${mapEmbedUrl}" class="map-frame" allowfullscreen="" loading="lazy"></iframe>
+                    </div>
+                    <div class="mt-4 flex flex-col sm:flex-row justify-center gap-4">
+                        <a href="${venue.mapUrl}" target="_blank" class="flex-1 w-full text-center bg-blue-500 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:bg-blue-600 transition-colors">
+                            <span class="flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map"><path d="M21 21v-8"/><path d="M21 21H3"/><path d="M12 13V2"/><path d="M21 13H3l9 8 9-8Z"/><path d="M3 13V2"/><path d="M12 22v-9"/></svg>
+                                地図アプリで開く
+                            </span>
+                        </a>
+                        <a href="${lineShareUrl}" target="_blank" class="flex-1 w-full text-center bg-green-500 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors">
+                            <span class="flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="lucide lucide-line-share"><path d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12z" fill="#FFF"/><path d="M8.5 8h-2.5v7h2.5c2.485 0 4.5-2.015 4.5-4.5S10.985 8 8.5 8zm-2.5 1v5h2.5c1.381 0 2.5-1.119 2.5-2.5S9.881 9 8.5 9h-2.5z" fill="#FFF"/></svg>
+                                LINEで共有
+                            </span>
+                        </a>
+                    </div>
+                `;
+                venueModal.classList.remove('hidden');
+            };
+
+            // 検索機能
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                filteredVenues = venues.filter(venue =>
+                    venue.name.toLowerCase().includes(query) ||
+                    (venue.nickname && venue.nickname.toLowerCase().includes(query)) ||
+                    venue.address.toLowerCase().includes(query)
+                );
+                currentPage = 1;
+                renderVenues();
+            });
+
+            // ページ送りボタンのイベントリスナー
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderVenues();
+                }
+            });
+
+            nextBtn.addEventListener('click', () => {
+                const totalPages = Math.ceil(filteredVenues.length / itemsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderVenues();
+                }
+            });
+
+            // モーダルを閉じる
+            closeModalBtn.addEventListener('click', () => {
+                venueModal.classList.add('hidden');
+            });
+
+            // モーダルの外側をクリックして閉じる
+            venueModal.addEventListener('click', (e) => {
+                if (e.target === venueModal) {
+                    venueModal.classList.add('hidden');
+                }
+            });
+
+            // キーボードのEscapeキーでモーダルを閉じる
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    venueModal.classList.add('hidden');
+                }
+            });
+
+            // ページ読み込み時に会場データを取得
+            fetchVenues();
+        });
+    </script>
+</body>
+</html>
