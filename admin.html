@@ -109,12 +109,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const SUPABASE_URL = 'https://dhqvremfiglqsqztkjsd.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRocXZyZW1maWdscXNxenRranNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2OTc3MzIsImV4cCI6MjA3MTI3MzczMn0.BK4e1bVs5YgoAoxpAMv-Dno-OYzeO4AHSsrAU-xUzx4';
+            // Vercelの環境変数からSupabaseの情報を取得
+            const SUPABASE_URL = process.env.SUPABASE_URL;
+            const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
             const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            // Vercelの環境変数からパスワードを取得するように変更
-            const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
+            // Vercelの環境変数からパスワードを取得
+            const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
             const passwordForm = document.getElementById('passwordForm');
             const adminPasswordInput = document.getElementById('adminPassword');
