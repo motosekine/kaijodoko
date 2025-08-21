@@ -13,9 +13,16 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
+            /* bodyのflex設定を削除し、フッターを中央に配置 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
         .container {
             max-width: 900px;
+            flex: 1; /* コンテンツがフッターを下に押し出すように設定 */
+            width: 100%;
         }
         .card {
             transition: transform 0.2s, box-shadow 0.2s;
@@ -88,7 +95,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 flex justify-center p-4 min-h-screen">
+<body class="bg-gray-100 flex flex-col items-center p-4 min-h-screen">
 
     <div class="container bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-8">
         <!-- ヘッダー -->
@@ -103,7 +110,7 @@
 
         <!-- サイト利用の注記を追加 -->
         <div class="bg-blue-100 border border-blue-200 text-blue-800 rounded-lg p-4 text-sm">
-            <p>このサイトは、練習、試合会場の場所（位置）を示すことを目的としています。会場や駐車場の利用方法等は、会場管理者やコーチからの指示に従ってください。</p>
+            <p>このサイトは、練習会場や試合会場の場所（位置）を示すことを目的としています。会場や駐車場の利用方法や注意事項は、会場管理者やコーチの案内に従ってください。</p>
         </div>
 
         <!-- 検索フォーム -->
@@ -145,10 +152,16 @@
         </div>
     </div>
 
+    <!-- フッターを追加 -->
+    <footer class="mt-8 text-center text-gray-500 text-sm w-full p-4">
+        &copy; 2025 motofumi.s
+    </footer>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const SUPABASE_URL = 'https://dhqvremfiglqsqztkjsd.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRocXZyZW1maWdscXNxenRranNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2OTc3MzIsImV4cCI6MjA3MTI3MzczMn0.BK4e1bVs5YgoAoxpAMv-Dno-OYzeO4AHSsrAU-xUzx4';
+            // Vercelの環境変数からSupabaseの情報を取得するように変更
+            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
             const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             const venueList = document.getElementById('venueList');
@@ -177,7 +190,7 @@
                     prevBtn.classList.remove('disabled');
                 }
 
-                if (currentPage === totalPages || totalPages === 0) {
+                if (currentPage >= totalPages || totalPages === 0) {
                     nextBtn.classList.add('disabled');
                 } else {
                     nextBtn.classList.remove('disabled');
@@ -191,10 +204,17 @@
                 const end = start + itemsPerPage;
                 const venuesToShow = filteredVenues.slice(start, end);
 
-                if (venuesToShow.length === 0) {
-                    venueList.innerHTML = '<p class="col-span-1 md:col-span-2 text-center text-gray-500">見つからなかったよ...他のキーワードで試してみてね！</p>';
+                if (venuesToShow.length === 0 && filteredVenues.length > 0) {
+                    // 最後のページでデータがなくなった場合、前のページに戻る
+                    currentPage--;
+                    renderVenues();
                     return;
                 }
+                 if (filteredVenues.length === 0) {
+                     venueList.innerHTML = '<p class="col-span-1 md:col-span-2 text-center text-gray-500">見つからなかったよ...他のキーワードで試してみてね！</p>';
+                     return;
+                 }
+
 
                 venuesToShow.forEach(venue => {
                     const card = document.createElement('div');
@@ -274,7 +294,6 @@
                 venueModal.classList.remove('hidden');
             };
 
-            // 検索機能
             searchInput.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
                 filteredVenues = venues.filter(venue =>
@@ -286,7 +305,6 @@
                 renderVenues();
             });
 
-            // ページ送りボタンのイベントリスナー
             prevBtn.addEventListener('click', () => {
                 if (currentPage > 1) {
                     currentPage--;
@@ -302,26 +320,22 @@
                 }
             });
 
-            // モーダルを閉じる
             closeModalBtn.addEventListener('click', () => {
                 venueModal.classList.add('hidden');
             });
 
-            // モーダルの外側をクリックして閉じる
             venueModal.addEventListener('click', (e) => {
                 if (e.target === venueModal) {
                     venueModal.classList.add('hidden');
                 }
             });
 
-            // キーボードのEscapeキーでモーダルを閉じる
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     venueModal.classList.add('hidden');
                 }
             });
 
-            // ページ読み込み時に会場データを取得
             fetchVenues();
         });
     </script>
