@@ -101,15 +101,21 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const SUPABASE_URL = process.env.SUPABASE_URL;
-            const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+            const SUPABASE_URL = 'https://dhqvremfiglqsqztkjsd.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRocXZyZW1maWdscXNxenRranNkIiwicm9sZSI6ImFub24iLCJpYXQiOj';
+            
+            if (SUPABASE_URL === 'https://dhqvremfiglqsqztkjsd.supabase.co' || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRocXZyZW1maWdscXNxenRranNkIiwicm9sZSI6ImFub24iLCJpYXQiOj') {
+                console.error("SupabaseのURLまたはキーが設定されていません。Vercelの環境変数を確認してください。");
+                alert("データベースの設定が完了していません。SupabaseのURLとキーを設定してください。");
+                return;
+            }
+            
             const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
             const registrationForm = document.getElementById('registrationForm');
             const submitBtn = document.getElementById('submitBtn');
             const loadingOverlay = document.getElementById('loadingOverlay');
             
-            // 登録ボタンのクリックイベント
             submitBtn.addEventListener('click', async () => {
                 const formalName = document.getElementById('formalName').value;
                 const nickname = document.getElementById('nickname').value;
@@ -139,7 +145,6 @@
                     alert("会場データの登録に失敗しました。後でもう一度お試しください。");
                 } else {
                     alert('会場情報が正常に登録されました。');
-                    // フォームをリセット
                     document.getElementById('formalName').value = '';
                     document.getElementById('nickname').value = '';
                     document.getElementById('address').value = '';
