@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>サッカー会場情報システム</title>
+    <title>KJSC-試合・練習会場情報</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide-icons@latest"></script>
-    <!-- Supabaseクライアントライブラリを読み込み -->
+    <script src="https://unpkg.com/lucide-icons@0.363.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
-            /* bodyのflex設定を削除し、フッターを中央に配置 */
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            padding: 1rem;
         }
         .container {
             max-width: 900px;
-            flex: 1; /* コンテンツがフッターを下に押し出すように設定 */
+            flex: 1;
             width: 100%;
         }
         .card {
@@ -53,15 +52,11 @@
                 transform: translateY(0);
             }
         }
-        .form-section {
-            display: none;
-            transition: max-height 0.3s ease-out;
-            overflow: hidden;
-            max-height: 0;
+        .pagination-btn {
+            @apply px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-full hover:bg-gray-300;
         }
-        .form-section.open {
-            display: block;
-            max-height: 500px; /* 十分な高さを設定 */
+        .pagination-btn.disabled {
+            @apply opacity-50 cursor-not-allowed;
         }
         .loading-overlay {
             position: fixed;
@@ -87,12 +82,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .pagination-btn {
-            @apply px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-full hover:bg-gray-300;
-        }
-        .pagination-btn.disabled {
-            @apply opacity-50 cursor-not-allowed;
-        }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col items-center p-4 min-h-screen">
@@ -108,7 +97,7 @@
             </p>
         </header>
 
-        <!-- サイト利用の注記を追加 -->
+        <!-- サイト利用の注記 -->
         <div class="bg-blue-100 border border-blue-200 text-blue-800 rounded-lg p-4 text-sm">
             <p>このサイトは、練習会場や試合会場の場所（位置）を示すことを目的としています。会場や駐車場の利用方法や注意事項は、会場管理者やコーチの案内に従ってください。</p>
         </div>
@@ -152,16 +141,24 @@
         </div>
     </div>
 
-    <!-- フッターを追加 -->
+    <!-- フッター -->
     <footer class="mt-8 text-center text-gray-500 text-sm w-full p-4">
         &copy; 2025 motofumi.s
     </footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Vercelの環境変数からSupabaseの情報を取得するように変更
+            // Vercelの環境変数からSupabaseの情報を取得
             const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
             const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            
+            // SupabaseのURLとキーが設定されているか確認
+            if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+                console.error("SupabaseのURLまたはキーが設定されていません。Vercelの環境変数を確認してください。");
+                alert("データベースの設定が完了していません。Vercelの環境変数にSupabaseのURLとキーを設定してください。");
+                return;
+            }
+
             const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             const venueList = document.getElementById('venueList');
@@ -204,8 +201,7 @@
                 const end = start + itemsPerPage;
                 const venuesToShow = filteredVenues.slice(start, end);
 
-                if (venuesToShow.length === 0 && filteredVenues.length > 0) {
-                    // 最後のページでデータがなくなった場合、前のページに戻る
+                if (filteredVenues.length > 0 && venuesToShow.length === 0) {
                     currentPage--;
                     renderVenues();
                     return;
